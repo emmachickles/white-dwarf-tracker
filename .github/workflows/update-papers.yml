@@ -1,0 +1,50 @@
+name: Update White Dwarf Papers
+
+on:
+  # Run daily at 6 AM UTC
+  schedule:
+    - cron: '0 6 * * *'
+  
+  # Allow manual triggering
+  workflow_dispatch:
+  
+  # Run on push to main branch (for testing)
+  push:
+    branches: [ main ]
+
+jobs:
+  update-papers:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Fetch papers from NASA ADS
+        env:
+          NASA_ADS_TOKEN: ${{ secrets.NASA_ADS_TOKEN }}
+        run: node scripts/fetch-papers.js
+        
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # Check if there are changes
+          if git diff --quiet data/papers-data.json; then
+            echo "No changes to papers data"
+          else
+            echo "Papers data updated, committing changes"
+            git add data/papers-data.json
+            git commit -m "🚀 Auto-update white dwarf papers data - $(date '+%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
